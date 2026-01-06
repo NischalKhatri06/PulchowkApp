@@ -1,103 +1,224 @@
-import React from 'react'
-import { StyleSheet, Image, ScrollView } from 'react-native'
-import { useLocalSearchParams } from 'expo-router'
-import ThemedView from '../../../components/ThemedView'
-import ThemedText from '../../../components/ThemedText'
-import ThemedButton from '../../../components/ThemedButton'
-import Spacer from '../../../components/Spacer'
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Image, ScrollView, View, FlatList, Dimensions, Alert } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../../../firebase/firebase';
+import ThemedView from '../../../components/ThemedView';
+import ThemedText from '../../../components/ThemedText';
+import ThemedButton from '../../../components/ThemedButton';
+import Spacer from '../../../components/Spacer';
+import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
+import { Colors } from '../../../constants/colors';
 
-const clubs = {
-  robotics: {
-    name: 'Robotics Club',
-    image: 'https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b',
-    bio: 'We build and program robots for competitions, research, and innovation.',
-  },
-  music: {
-    name: 'Music Club',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d',
-    bio: 'A creative space for musicians, jam sessions, and performances.',
-  },
-  sports: {
-    name: 'Sports Club',
-    image: 'https://images.unsplash.com/photo-1521412644187-c49fa049e84d',
-    bio: 'Promoting fitness, teamwork, and competitive sports.',
-  },
-  ai: {
-    name: 'AI Society',
-    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995',
-    bio: 'Exploring artificial intelligence, ML, and data science.',
-  },
-  photography: {
-    name: 'Photography Club',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee',
-    bio: 'Capturing moments and telling stories through photography.',
-  },
-  drama: {
-    name: 'Drama Club',
-    image: 'https://images.unsplash.com/photo-1515165562835-c3b8c97dcbdb',
-    bio: 'Creating and performing theatrical plays, skits, and stage productions.',
-  },
-  literature: {
-    name: 'Literature Club',
-    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794',
-    bio: 'Exploring novels, poetry, and creative writing while fostering discussion.',
-  },
-  entrepreneurship: {
-    name: 'Startup Club',
-    image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd',
-    bio: 'Encouraging innovation, business ideas, and startup projects.',
-  },
-  environment: {
-    name: 'Environment Club',
-    image: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6',
-    bio: 'Promoting sustainability, green initiatives, and environmental awareness.',
-  },
-  it: {
-    name: 'IT Club',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
-    bio: 'Focusing on programming, software development, and tech projects.',
-  },
-
-}
+const windowWidth = Dimensions.get('window').width;
 
 export default function ClubProfile() {
-  const { clubId } = useLocalSearchParams()
-  const club = clubs[clubId]
+  const { clubId } = useLocalSearchParams();
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
 
-  if (!club) {
+  const [clubData, setClubData] = useState(null);
+  const [clubPosts, setClubPosts] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadClubData();
+    loadClubPosts();
+  }, [clubId]);
+
+  // Load club data
+  const loadClubData = async () => {
+    try {
+      const clubDoc = await getDoc(doc(db, 'clubs', clubId));
+      if (clubDoc.exists()) {
+        const data = clubDoc.data();
+        setClubData(data);
+
+        // Check if current user is following this club
+        if (auth.currentUser) {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const following = userDoc.data().following || [];
+            setIsFollowing(following.includes(clubId));
+          }
+        }
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading club:', error);
+      setLoading(false);
+    }
+  };
+
+  // Load club posts
+  const loadClubPosts = async () => {
+    try {
+      const postsRef = collection(db, 'posts');
+      const q = query(postsRef, where('authorId', '==', clubId), where('authorType', '==', 'club'));
+      const snapshot = await getDocs(q);
+
+      const posts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setClubPosts(posts);
+    } catch (error) {
+      console.error('Error loading club posts:', error);
+    }
+  };
+
+  // Follow/Unfollow club
+  const handleFollowToggle = async () => {
+    try {
+      if (!auth.currentUser) {
+        Alert.alert('Login Required', 'Please log in to follow clubs');
+        return;
+      }
+
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const clubRef = doc(db, 'clubs', clubId);
+
+      if (isFollowing) {
+        // Unfollow
+        await updateDoc(userRef, {
+          following: arrayRemove(clubId)
+        });
+        await updateDoc(clubRef, {
+          followers: arrayRemove(auth.currentUser.uid)
+        });
+        setIsFollowing(false);
+        
+        // Update local state immediately
+        setClubData(prev => ({
+          ...prev,
+          followers: prev.followers?.filter(id => id !== auth.currentUser.uid) || []
+        }));
+      } else {
+        // Follow
+        await updateDoc(userRef, {
+          following: arrayUnion(clubId)
+        });
+        await updateDoc(clubRef, {
+          followers: arrayUnion(auth.currentUser.uid)
+        });
+        setIsFollowing(true);
+        
+        // Update local state immediately
+        setClubData(prev => ({
+          ...prev,
+          followers: [...(prev.followers || []), auth.currentUser.uid]
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      Alert.alert('Error', 'Failed to update follow status');
+    }
+  };
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.center}>
+        <ThemedText>Loading club...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (!clubData) {
     return (
       <ThemedView style={styles.center}>
         <ThemedText>Club not found</ThemedText>
       </ThemedView>
-    )
+    );
   }
+
+  const followerCount = clubData.followers?.length || 0;
 
   return (
     <ScrollView>
-      <Image source={{ uri: club.image }} style={styles.cover} />
+      {/* Cover Image */}
+      <Image source={{ uri: clubData.image }} style={styles.cover} />
 
       <ThemedView style={styles.content}>
-        <ThemedText style={styles.name}>{club.name}</ThemedText>
-        <ThemedText style={styles.bio}>{club.bio}</ThemedText>
+        {/* Club Info */}
+        <View style={styles.header}>
+          <View style={styles.nameContainer}>
+            <ThemedText style={styles.name}>{clubData.name}</ThemedText>
+            <ThemedText style={styles.bio}>{clubData.bio}</ThemedText>
+          </View>
+        </View>
 
         <Spacer height={12} />
 
-        <ThemedButton>
-          <ThemedText>
-            Follow
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <ThemedText title style={styles.statNumber}>{clubPosts.length}</ThemedText>
+            <ThemedText style={styles.statLabel}>Posts</ThemedText>
+          </View>
+          <View style={styles.stat}>
+            <ThemedText title style={styles.statNumber}>{followerCount}</ThemedText>
+            <ThemedText style={styles.statLabel}>Followers</ThemedText>
+          </View>
+        </View>
+
+        <Spacer height={16} />
+
+        {/* Follow Button */}
+        <ThemedButton
+          onPress={handleFollowToggle}
+          style={[
+            styles.followButton,
+            { backgroundColor: isFollowing ? theme.uiBackground : '#007AFF' }
+          ]}
+        >
+          <ThemedText style={[
+            styles.followButtonText,
+            { color: isFollowing ? theme.text : '#fff' }
+          ]}>
+            {isFollowing ? 'Following' : 'Follow'}
           </ThemedText>
         </ThemedButton>
 
         <Spacer height={24} />
 
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: theme.iconColor, opacity: 0.2 }]} />
+
+        {/* Posts Section */}
         <ThemedText style={styles.sectionTitle}>Posts</ThemedText>
 
-        <ThemedView style={styles.emptyPosts}>
-          <ThemedText>No posts yet</ThemedText>
-        </ThemedView>
+        {clubPosts.length > 0 ? (
+          <FlatList
+            data={clubPosts}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            scrollEnabled={false}
+            renderItem={({ item }) => (
+              <View style={styles.postImageContainer}>
+                {item.image ? (
+                  <Image source={{ uri: item.image }} style={styles.postImage} />
+                ) : (
+                  <View style={[styles.postImage, { backgroundColor: theme.uiBackground }]}>
+                    <ThemedText style={styles.postContent} numberOfLines={3}>
+                      {item.content}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            )}
+          />
+        ) : (
+          <View style={styles.emptyPosts}>
+            <Ionicons name="images-outline" size={64} color={theme.iconColor} style={{ opacity: 0.3 }} />
+            <ThemedText style={styles.emptyText}>No posts yet</ThemedText>
+          </View>
+        )}
       </ThemedView>
     </ScrollView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -108,24 +229,77 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  nameContainer: {
+    flex: 1,
+  },
   name: {
     fontSize: 24,
     fontWeight: '700',
+    marginBottom: 6,
   },
   bio: {
     fontSize: 14,
     opacity: 0.7,
-    marginTop: 6,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 32,
+  },
+  stat: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  followButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  followButtonText: {
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
   },
-  emptyPosts: {
-    padding: 20,
-    borderRadius: 12,
+  postImageContainer: {
+    margin: 1,
+  },
+  postImage: {
+    width: (windowWidth - 36) / 3,
+    height: (windowWidth - 36) / 3,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  postContent: {
+    fontSize: 10,
+    padding: 4,
+    textAlign: 'center',
+  },
+  emptyPosts: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: 12,
     opacity: 0.6,
   },
   center: {
@@ -133,4 +307,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-})
+});

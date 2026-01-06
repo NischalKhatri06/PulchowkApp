@@ -333,6 +333,7 @@ const TabsLayout = () => {
 export default TabsLayout;
 
 const styles = StyleSheet.create({
+
   headerContainer: { 
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -341,14 +342,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: '100%',
   },
+
   headerButtons: {
     flexDirection: 'row',
     gap: 8,
   },
+
   iconButton: {
     padding: 8,
     borderRadius: 8,
   },
+
   searchContainer: {
     position: 'absolute',
     top: 120,
@@ -359,6 +363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
+
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -367,6 +372,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 16,
   },
+
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16 },
   historyHeader: {
@@ -376,21 +382,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 12,
   },
+
   historyTitle: {
     fontSize: 16,
     fontWeight: '600',
   },
+
   clearButton: {
     fontSize: 14,
     color: '#007AFF',
   },
-  resultItem: { paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, marginBottom: 4 },
-  resultItemPressed: { opacity: 0.6 },
-  resultContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  resultIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  resultText: { flex: 1 },
-  resultName: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-  resultType: { fontSize: 13, opacity: 0.6 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyText: { marginTop: 12, fontSize: 15, opacity: 0.5, textAlign: 'center' },
+
+  resultItem: { 
+    paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, marginBottom: 4 
+  },
+
+  resultItemPressed: { 
+    opacity: 0.6 
+  },
+
+  resultContent: {
+     flexDirection: 'row', 
+     alignItems: 'center', 
+     gap: 12 
+  },
+
+  resultIcon: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  resultText: { 
+    flex: 1 
+  },
+
+  resultName: {
+     fontSize: 16, 
+     fontWeight: '600', 
+     marginBottom: 2 
+  },
+
+  resultType: { 
+    fontSize: 13, 
+    opacity: 0.6 
+  },
+
+  emptyState: {
+     alignItems: 'center', 
+     justifyContent: 'center', 
+     paddingVertical: 60 
+    },
+
+  emptyText: { 
+    marginTop: 12, 
+    fontSize: 15, 
+    opacity: 0.5, 
+    textAlign: 'center' 
+  },
+  
 });

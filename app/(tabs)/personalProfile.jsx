@@ -268,25 +268,110 @@ export default function PersonalProfile() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  topRow: { flexDirection: 'row', alignItems: 'center' },
-  profileImageContainer: { marginRight: 20 },
-  profileImage: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
-  statsContainer: { flexDirection: 'row', flex: 1, justifyContent: 'space-around' },
-  stat: { alignItems: 'center' },
-  statNumber: { fontSize: 18, fontWeight: '700' },
-  statLabel: { fontSize: 13, opacity: 0.6, marginTop: 2 },
-  bioContainer: { paddingHorizontal: 4 },
-  username: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  bio: { fontSize: 14, opacity: 0.8 },
-  editButton: { borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
-  editButtonText: { fontWeight: '600' },
-  divider: { height: 1, marginVertical: 10 },
-  postImageContainer: { margin: 1 },
-  postImage: { width: (windowWidth - 36) / 3, height: (windowWidth - 36) / 3, justifyContent: 'center', alignItems: 'center' },
-  postContent: { fontSize: 10, padding: 4, textAlign: 'center' },
-  emptyPosts: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  emptyText: { marginTop: 16, fontSize: 16, opacity: 0.5 },
+  container: { 
+    flex: 1, 
+    paddingHorizontal: 16, 
+    paddingTop: 16 
+  },
+
+  topRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+
+  profileImageContainer: { 
+    marginRight: 20 
+  },
+
+  profileImage: { 
+    width: 90, 
+    height: 90, 
+    borderRadius: 45, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  statsContainer: { 
+    flexDirection: 'row', 
+    flex: 1, 
+    justifyContent: 'space-around' 
+  },
+
+  stat: { 
+    alignItems: 'center' 
+  },
+
+  statNumber: { 
+    fontSize: 18, 
+    fontWeight: '700' 
+  },
+
+  statLabel: { 
+    fontSize: 13, 
+    opacity: 0.6, 
+    marginTop: 2 
+  },
+
+  bioContainer: { 
+    paddingHorizontal: 4 
+  },
+
+  username: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginBottom: 4 
+  },
+
+  bio: { 
+    fontSize: 14, 
+    opacity: 0.8 
+  },
+
+  editButton: { 
+    borderRadius: 8, 
+    paddingVertical: 10, 
+    alignItems: 'center' 
+  },
+
+  editButtonText: { 
+    fontWeight: '600' 
+  },
+
+  divider: { 
+    height: 1, 
+    marginVertical: 10 
+  },
+
+  postImageContainer: { 
+    margin: 1 
+  },
+
+  postImage: { 
+    width: (windowWidth - 36) / 3, 
+    height: (windowWidth - 36) / 3, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  postContent: { 
+    fontSize: 10, 
+    padding: 4, 
+    textAlign: 'center' 
+  },
+
+  emptyPosts: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingTop: 60 
+  },
+
+  emptyText: { 
+    marginTop: 16, 
+    fontSize: 16, 
+    opacity: 0.5 
+  },
+
   logoutButton: {
     position: 'absolute',
     bottom: 20,
@@ -295,18 +380,69 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     padding: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    
+    shadowOffset: { 
+      width: 0, 
+      height: 2 
+    },
+
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    },
+
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'flex-end' 
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 400 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  modalTitle: { fontSize: 18, fontWeight: '700' },
-  saveButton: { color: '#007AFF', fontSize: 16, fontWeight: '600' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
-  input: { borderRadius: 10, padding: 12, fontSize: 16 },
-  bioInput: { height: 100, textAlignVertical: 'top' },
-  charCount: { fontSize: 12, opacity: 0.5, textAlign: 'right', marginTop: 4 },
+
+  modalContent: { 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    padding: 20, 
+    minHeight: 400 
+  },
+
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+
+  modalTitle: { 
+    fontSize: 18, 
+    fontWeight: '700' 
+  },
+
+  saveButton: { 
+    color: '#007AFF', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+
+  label: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    marginBottom: 8 
+  },
+
+  input: { 
+    borderRadius: 10, 
+    padding: 12, 
+    fontSize: 16 
+  },
+
+  bioInput: { 
+    height: 100, 
+    textAlignVertical: 'top' 
+  },
+
+  charCount: { 
+    fontSize: 12, 
+    opacity: 0.5, 
+    textAlign: 'right', 
+    marginTop: 4 
+  },
+
 });

@@ -222,89 +222,110 @@ export default function ClubProfile() {
 }
 
 const styles = StyleSheet.create({
+
   cover: {
     width: '100%',
     height: 240,
   },
+
   content: {
     padding: 16,
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+
   nameContainer: {
     flex: 1,
   },
+
   name: {
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 6,
   },
+
   bio: {
     fontSize: 14,
     opacity: 0.7,
   },
+
   statsRow: {
     flexDirection: 'row',
     gap: 32,
   },
+
   stat: {
     alignItems: 'center',
   },
+
   statNumber: {
     fontSize: 18,
     fontWeight: '700',
   },
+
   statLabel: {
     fontSize: 13,
     opacity: 0.6,
     marginTop: 2,
   },
+
   followButton: {
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
   },
+
   followButtonText: {
     fontWeight: '600',
     fontSize: 15,
   },
+
   divider: {
     height: 1,
     marginVertical: 16,
   },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
   },
+
   postImageContainer: {
     margin: 1,
   },
+
   postImage: {
     width: (windowWidth - 36) / 3,
     height: (windowWidth - 36) / 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   postContent: {
     fontSize: 10,
     padding: 4,
     textAlign: 'center',
   },
+
   emptyPosts: {
     paddingVertical: 40,
     alignItems: 'center',
   },
+
   emptyText: {
     marginTop: 12,
     opacity: 0.6,
   },
+
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
 });

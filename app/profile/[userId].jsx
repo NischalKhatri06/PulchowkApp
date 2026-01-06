@@ -249,27 +249,132 @@ export default function UserProfile() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  backButton: { padding: 8, marginRight: 12 },
-  headerTitle: { fontSize: 20, fontWeight: '700' },
-  topRow: { flexDirection: 'row', alignItems: 'center' },
-  profileImageContainer: { marginRight: 20 },
-  profileImage: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
-  statsContainer: { flexDirection: 'row', flex: 1, justifyContent: 'space-around' },
-  stat: { alignItems: 'center' },
-  statNumber: { fontSize: 18, fontWeight: '700' },
-  statLabel: { fontSize: 13, opacity: 0.6, marginTop: 2 },
-  bioContainer: { paddingHorizontal: 4 },
-  username: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  bio: { fontSize: 14, opacity: 0.8 },
-  followButton: { borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
-  followButtonText: { fontWeight: '600', fontSize: 15 },
-  divider: { height: 1, marginVertical: 10 },
-  postImageContainer: { margin: 1 },
-  postImage: { width: (windowWidth - 36) / 3, height: (windowWidth - 36) / 3, justifyContent: 'center', alignItems: 'center' },
-  postContent: { fontSize: 10, padding: 4, textAlign: 'center' },
-  emptyPosts: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  emptyText: { marginTop: 16, fontSize: 16, opacity: 0.5 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  container: { 
+    flex: 1, 
+    paddingHorizontal: 16, 
+    paddingTop: 16 
+  },
+
+  headerRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 10 
+  },
+
+  backButton: { 
+    padding: 8, 
+    marginRight: 12 
+  },
+
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: '700' 
+  },
+
+  topRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+
+  profileImageContainer: { 
+    marginRight: 20 
+  },
+
+  profileImage: { 
+    width: 90, 
+    height: 90, 
+    borderRadius: 45, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  statsContainer: { 
+    flexDirection: 'row', 
+    flex: 1, 
+    justifyContent: 'space-around' 
+  },
+
+  stat: { 
+    alignItems: 'center' 
+  },
+
+  statNumber: { 
+    fontSize: 18, 
+    fontWeight: '700' 
+  },
+
+  statLabel: { 
+    fontSize: 13, 
+    opacity: 0.6, 
+    marginTop: 2 
+  },
+
+  bioContainer: { 
+    paddingHorizontal: 4 
+  },
+
+  username: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginBottom: 4 
+  },
+
+  bio: { 
+    fontSize: 14, 
+    opacity: 0.8 
+  },
+
+  followButton: { 
+    borderRadius: 8, 
+    paddingVertical: 10, 
+    alignItems: 'center' 
+  },
+
+  followButtonText: { 
+    fontWeight: '600', 
+    fontSize: 15 
+  },
+
+  divider: { 
+    height: 1, 
+    marginVertical: 10 
+  },
+
+  postImageContainer: { 
+    margin: 1 
+  },
+
+  postImage: { 
+    width: (windowWidth - 36) / 3, 
+    height: (windowWidth - 36) / 3, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  postContent: { 
+    fontSize: 10, 
+    padding: 4, 
+    textAlign: 'center' 
+  },
+
+  emptyPosts: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    paddingTop: 60 
+  },
+
+  emptyText: { 
+    marginTop: 16, 
+    fontSize: 16, 
+    opacity: 0.5 
+  },
+
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
 });

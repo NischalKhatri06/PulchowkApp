@@ -1,10 +1,13 @@
 // firebase.js
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  initializeAuth,
+  getReactNativePersistence
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Your Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyC3zO6jnjY_M0EHjUJOU3fQS1w5tgIdSbI",
   authDomain: "my-expo-app-8d31d.firebaseapp.com",
@@ -18,8 +21,13 @@ const firebaseConfig = {
 // Initialize Firebase only once
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Export Firebase services
-export const auth = getAuth(app);
+// Initialize Auth with persistence
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+
+// Firestore + Storage
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
 export default app;

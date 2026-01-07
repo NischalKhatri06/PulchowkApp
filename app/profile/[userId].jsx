@@ -96,30 +96,47 @@ export default function UserProfile() {
       const targetUserRef = doc(db, 'users', userId);
 
       if (isFollowing) {
-        // Unfollow
+        // Unfollow - update current user's following
         await updateDoc(currentUserRef, {
           following: arrayRemove(userId)
         });
+        
+        // Update target user's followers
         await updateDoc(targetUserRef, {
           followers: arrayRemove(auth.currentUser.uid)
         });
+        
         setIsFollowing(false);
+        
+        // Update local userData to reflect new follower count
+        setUserData(prev => ({
+          ...prev,
+          followers: prev.followers?.filter(id => id !== auth.currentUser.uid) || []
+        }));
+        
       } else {
-        // Follow
+        // Follow - update current user's following
         await updateDoc(currentUserRef, {
           following: arrayUnion(userId)
         });
+        
+        // Update target user's followers
         await updateDoc(targetUserRef, {
           followers: arrayUnion(auth.currentUser.uid)
         });
+        
         setIsFollowing(true);
+        
+        // Update local userData to reflect new follower count
+        setUserData(prev => ({
+          ...prev,
+          followers: [...(prev.followers || []), auth.currentUser.uid]
+        }));
       }
 
-      // Reload user data to update follower count
-      loadUserData();
     } catch (error) {
       console.error('Error toggling follow:', error);
-      Alert.alert('Error', 'Failed to update follow status');
+      Alert.alert('Error', 'Failed to update follow status. Please try again.');
     }
   };
 
@@ -250,131 +267,128 @@ export default function UserProfile() {
 
 const styles = StyleSheet.create({
   
-  container: { 
-    flex: 1, 
-    paddingHorizontal: 16, 
-    paddingTop: 16 
+  // MAIN CONTAINER
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
 
-  headerRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 10 
+  // HEADER
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
   },
 
-  backButton: { 
-    padding: 8, 
-    marginRight: 12 
+  // PROFILE TOP SECTION
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileImageContainer: {
+    marginRight: 20,
+  },
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  headerTitle: { 
-    fontSize: 20, 
-    fontWeight: '700' 
+  // USER STATS
+  statsContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+  },
+  stat: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginTop: 2,
   },
 
-  topRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  // BIO
+  bioContainer: {
+    paddingHorizontal: 4,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  bio: {
+    fontSize: 14,
+    opacity: 0.8,
   },
 
-  profileImageContainer: { 
-    marginRight: 20 
+  // FOLLOW BUTTON
+  followButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  followButtonText: {
+    fontWeight: '600',
+    fontSize: 15,
   },
 
-  profileImage: { 
-    width: 90, 
-    height: 90, 
-    borderRadius: 45, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  // DIVIDER
+  divider: {
+    height: 1,
+    marginVertical: 10,
   },
 
-  statsContainer: { 
-    flexDirection: 'row', 
-    flex: 1, 
-    justifyContent: 'space-around' 
+  // POSTS GRID
+  postImageContainer: {
+    margin: 1,
+  },
+  postImage: {
+    width: (windowWidth - 36) / 3,
+    height: (windowWidth - 36) / 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postContent: {
+    fontSize: 10,
+    padding: 4,
+    textAlign: 'center',
   },
 
-  stat: { 
-    alignItems: 'center' 
+  // EMPTY STATE
+  emptyPosts: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.5,
   },
 
-  statNumber: { 
-    fontSize: 18, 
-    fontWeight: '700' 
-  },
-
-  statLabel: { 
-    fontSize: 13, 
-    opacity: 0.6, 
-    marginTop: 2 
-  },
-
-  bioContainer: { 
-    paddingHorizontal: 4 
-  },
-
-  username: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginBottom: 4 
-  },
-
-  bio: { 
-    fontSize: 14, 
-    opacity: 0.8 
-  },
-
-  followButton: { 
-    borderRadius: 8, 
-    paddingVertical: 10, 
-    alignItems: 'center' 
-  },
-
-  followButtonText: { 
-    fontWeight: '600', 
-    fontSize: 15 
-  },
-
-  divider: { 
-    height: 1, 
-    marginVertical: 10 
-  },
-
-  postImageContainer: { 
-    margin: 1 
-  },
-
-  postImage: { 
-    width: (windowWidth - 36) / 3, 
-    height: (windowWidth - 36) / 3, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-
-  postContent: { 
-    fontSize: 10, 
-    padding: 4, 
-    textAlign: 'center' 
-  },
-
-  emptyPosts: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    paddingTop: 60 
-  },
-
-  emptyText: { 
-    marginTop: 16, 
-    fontSize: 16, 
-    opacity: 0.5 
-  },
-
-  center: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  // CENTER GENERIC
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
 });

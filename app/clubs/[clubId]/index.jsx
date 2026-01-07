@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Image, ScrollView, View, FlatList, Dimensions, Alert } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from 'firebase/firestore';
+import { StyleSheet, Image, View, FlatList, Dimensions, Alert, Pressable } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '../../../firebase/firebase';
 import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
@@ -15,6 +15,7 @@ const windowWidth = Dimensions.get('window').width;
 
 export default function ClubProfile() {
   const { clubId } = useLocalSearchParams();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -28,7 +29,6 @@ export default function ClubProfile() {
     loadClubPosts();
   }, [clubId]);
 
-  // Load club data
   const loadClubData = async () => {
     try {
       const clubDoc = await getDoc(doc(db, 'clubs', clubId));
@@ -36,7 +36,6 @@ export default function ClubProfile() {
         const data = clubDoc.data();
         setClubData(data);
 
-        // Check if current user is following this club
         if (auth.currentUser) {
           const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
           if (userDoc.exists()) {
@@ -52,11 +51,15 @@ export default function ClubProfile() {
     }
   };
 
-  // Load club posts
   const loadClubPosts = async () => {
     try {
       const postsRef = collection(db, 'posts');
-      const q = query(postsRef, where('authorId', '==', clubId), where('authorType', '==', 'club'));
+      const q = query(
+        postsRef, 
+        where('authorId', '==', clubId), 
+        where('authorType', '==', 'club'),
+        limit(50)
+      );
       const snapshot = await getDocs(q);
 
       const posts = snapshot.docs.map(doc => ({
@@ -70,7 +73,6 @@ export default function ClubProfile() {
     }
   };
 
-  // Follow/Unfollow club
   const handleFollowToggle = async () => {
     try {
       if (!auth.currentUser) {
@@ -82,7 +84,6 @@ export default function ClubProfile() {
       const clubRef = doc(db, 'clubs', clubId);
 
       if (isFollowing) {
-        // Unfollow
         await updateDoc(userRef, {
           following: arrayRemove(clubId)
         });
@@ -91,13 +92,13 @@ export default function ClubProfile() {
         });
         setIsFollowing(false);
         
-        // Update local state immediately
         setClubData(prev => ({
           ...prev,
           followers: prev.followers?.filter(id => id !== auth.currentUser.uid) || []
         }));
+
+        Alert.alert('Unfollowed', `You unfollowed ${clubData.name}`);
       } else {
-        // Follow
         await updateDoc(userRef, {
           following: arrayUnion(clubId)
         });
@@ -106,11 +107,12 @@ export default function ClubProfile() {
         });
         setIsFollowing(true);
         
-        // Update local state immediately
         setClubData(prev => ({
           ...prev,
           followers: [...(prev.followers || []), auth.currentUser.uid]
         }));
+
+        Alert.alert('Following', `You are now following ${clubData.name}`);
       }
     } catch (error) {
       console.error('Error toggling follow:', error);
@@ -120,7 +122,7 @@ export default function ClubProfile() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.center}>
+      <ThemedView style={styles.center} safe={true}>
         <ThemedText>Loading club...</ThemedText>
       </ThemedView>
     );
@@ -128,7 +130,7 @@ export default function ClubProfile() {
 
   if (!clubData) {
     return (
-      <ThemedView style={styles.center}>
+      <ThemedView style={styles.center} safe={true}>
         <ThemedText>Club not found</ThemedText>
       </ThemedView>
     );
@@ -137,23 +139,23 @@ export default function ClubProfile() {
   const followerCount = clubData.followers?.length || 0;
 
   return (
-    <ScrollView>
-      {/* Cover Image */}
-      <Image source={{ uri: clubData.image }} style={styles.cover} />
+    <ThemedView style={styles.container} >
+     
+      <Spacer height={10} />
 
-      <ThemedView style={styles.content}>
-        {/* Club Info */}
-        <View style={styles.header}>
-          <View style={styles.nameContainer}>
-            <ThemedText style={styles.name}>{clubData.name}</ThemedText>
-            <ThemedText style={styles.bio}>{clubData.bio}</ThemedText>
-          </View>
+      {/* Profile Section - Similar to PersonalProfile */}
+      <View style={styles.topRow}>
+        <View style={styles.profileImageContainer}>
+          {clubData.image ? (
+            <Image source={{ uri: clubData.image }} style={styles.profileImage} />
+          ) : (
+            <View style={[styles.profileImage, { backgroundColor: theme.uiBackground }]}>
+              <Ionicons name="people" size={40} color={theme.iconColor} />
+            </View>
+          )}
         </View>
 
-        <Spacer height={12} />
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
+        <View style={styles.statsContainer}>
           <View style={styles.stat}>
             <ThemedText title style={styles.statNumber}>{clubPosts.length}</ThemedText>
             <ThemedText style={styles.statLabel}>Posts</ThemedText>
@@ -163,99 +165,109 @@ export default function ClubProfile() {
             <ThemedText style={styles.statLabel}>Followers</ThemedText>
           </View>
         </View>
+      </View>
 
-        <Spacer height={16} />
+      <Spacer height={16} />
 
-        {/* Follow Button */}
-        <ThemedButton
-          onPress={handleFollowToggle}
-          style={[
-            styles.followButton,
-            { backgroundColor: isFollowing ? theme.uiBackground : '#007AFF' }
-          ]}
-        >
-          <ThemedText style={[
-            styles.followButtonText,
-            { color: isFollowing ? theme.text : '#fff' }
-          ]}>
-            {isFollowing ? 'Following' : 'Follow'}
-          </ThemedText>
-        </ThemedButton>
+      {/* Club Name & Bio */}
+      <View style={styles.bioContainer}>
+        <ThemedText title style={styles.username}>{clubData.name}</ThemedText>
+        {clubData.bio && <ThemedText style={styles.bio}>{clubData.bio}</ThemedText>}
+      </View>
 
-        <Spacer height={24} />
+      <Spacer height={16} />
 
-        {/* Divider */}
-        <View style={[styles.divider, { backgroundColor: theme.iconColor, opacity: 0.2 }]} />
+      {/* Follow Button */}
+      <ThemedButton
+        onPress={handleFollowToggle}
+        style={[
+          styles.followButton,
+          { backgroundColor: isFollowing ? theme.uiBackground : '#007AFF' }
+        ]}
+      >
+        <ThemedText style={[
+          styles.followButtonText,
+          { color: isFollowing ? theme.text : '#fff' }
+        ]}>
+          {isFollowing ? 'Following' : 'Follow'}
+        </ThemedText>
+      </ThemedButton>
 
-        {/* Posts Section */}
-        <ThemedText style={styles.sectionTitle}>Posts</ThemedText>
+      <Spacer height={16} />
 
-        {clubPosts.length > 0 ? (
-          <FlatList
-            data={clubPosts}
-            keyExtractor={(item) => item.id}
-            numColumns={3}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={styles.postImageContainer}>
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={styles.postImage} />
-                ) : (
-                  <View style={[styles.postImage, { backgroundColor: theme.uiBackground }]}>
-                    <ThemedText style={styles.postContent} numberOfLines={3}>
-                      {item.content}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-            )}
-          />
-        ) : (
-          <View style={styles.emptyPosts}>
-            <Ionicons name="images-outline" size={64} color={theme.iconColor} style={{ opacity: 0.3 }} />
-            <ThemedText style={styles.emptyText}>No posts yet</ThemedText>
-          </View>
-        )}
-      </ThemedView>
-    </ScrollView>
+      {/* Divider */}
+      <View style={[styles.divider, { backgroundColor: theme.iconColor, opacity: 0.2 }]} />
+
+      {/* Posts Grid */}
+      {clubPosts.length > 0 ? (
+        <FlatList
+          data={clubPosts}
+          keyExtractor={(item) => item.id}
+          numColumns={3}
+          renderItem={({ item }) => (
+            <View style={styles.postImageContainer}>
+              {item.image ? (
+                <Image source={{ uri: item.image }} style={styles.postImage} />
+              ) : (
+                <View style={[styles.postImage, { backgroundColor: theme.uiBackground }]}>
+                  <ThemedText style={styles.postContent} numberOfLines={3}>
+                    {item.content}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          )}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          initialNumToRender={9}
+          maxToRenderPerBatch={9}
+        />
+      ) : (
+        <View style={styles.emptyPosts}>
+          <Ionicons name="images-outline" size={64} color={theme.iconColor} style={{ opacity: 0.3 }} />
+          <ThemedText style={styles.emptyText}>No posts yet</ThemedText>
+        </View>
+      )}
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
 
-  cover: {
-    width: '100%',
-    height: 240,
-  },
-
-  content: {
-    padding: 16,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-
-  nameContainer: {
+  container: {
     flex: 1,
+    paddingHorizontal: 16,
   },
 
-  name: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 6,
+  headerRow: {
+    paddingTop: 10,
   },
 
-  bio: {
-    fontSize: 14,
-    opacity: 0.7,
+  backButton: {
+    padding: 8,
+    width: 44,
   },
 
-  statsRow: {
+  topRow: {
     flexDirection: 'row',
-    gap: 32,
+    alignItems: 'center',
+  },
+
+  profileImageContainer: {
+    marginRight: 20,
+  },
+
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  statsContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
   },
 
   stat: {
@@ -273,6 +285,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  bioContainer: {
+    paddingHorizontal: 4,
+  },
+
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+
+  bio: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+
   followButton: {
     borderRadius: 8,
     paddingVertical: 10,
@@ -286,13 +313,7 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    marginVertical: 16,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
+    marginVertical: 10,
   },
 
   postImageContainer: {
@@ -313,13 +334,16 @@ const styles = StyleSheet.create({
   },
 
   emptyPosts: {
-    paddingVertical: 40,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 60,
   },
 
   emptyText: {
     marginTop: 12,
-    opacity: 0.6,
+    fontSize: 16,
+    opacity: 0.5,
   },
 
   center: {

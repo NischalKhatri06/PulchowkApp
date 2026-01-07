@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Image, View, FlatList, Dimensions, Alert } from 'react-native';
+import { StyleSheet, Image, View, FlatList, Dimensions, Alert, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
@@ -163,10 +163,11 @@ export default function UserProfile() {
   return (
     <ThemedView style={styles.container}>
       {/* Back Button */}
+      <Spacer height = {20} />
       <View style={styles.headerRow}>
-        <ThemedButton onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={theme.iconColor} />
-        </ThemedButton>
+        </Pressable>
         <ThemedText title style={styles.headerTitle}>{userData.name || 'User Profile'}</ThemedText>
       </View>
 
@@ -268,17 +269,16 @@ export default function UserProfile() {
 const styles = StyleSheet.create({
   
   // MAIN CONTAINER
-  container: {
+  container: { 
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
   },
 
   // HEADER
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingTop: 10,
   },
   backButton: {
     padding: 8,
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  // CENTER GENERIC
+  // CENTER UTILITY
   center: {
     flex: 1,
     justifyContent: 'center',

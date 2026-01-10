@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, FlatList, Dimensions, Alert, TextInput, Modal, Pressable } from 'react-native';
+import { View, StyleSheet, Image, FlatList, Dimensions, Alert, TextInput, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios';
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
@@ -17,6 +19,11 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const windowWidth = Dimensions.get('window').width;
 
+// Cloudinary config
+const CLOUDINARY_CLOUD_NAME = 'dyz9an12d';
+const CLOUDINARY_UPLOAD_PRESET = 'myPresent';
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
 export default function PersonalProfile() {
   const router = useRouter();
   const { user } = useAuth();
@@ -26,14 +33,12 @@ export default function PersonalProfile() {
   const [userData, setUserData] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
-  const [photoURL, setPhotoURL] = useState('');
-  const [imageError, setImageError] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -78,7 +83,7 @@ export default function PersonalProfile() {
       const q = query(
         postsRef, 
         where('authorId', '==', auth.currentUser.uid),
-        limit(50) // Limit posts for faster loading
+        limit(50)
       );
       const snapshot = await getDocs(q);
 
@@ -93,42 +98,74 @@ export default function PersonalProfile() {
     }
   };
 
-  // Validate and save photo URL
-  const handleSavePhoto = async () => {
+  // Pick image and upload to Cloudinary
+  const pickAndUploadImage = async () => {
     try {
-      const url = photoURL.trim();
-      
-      if (!url) {
-        Alert.alert('Error', 'Please enter an image URL');
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need permission to access your photos');
         return;
       }
 
-      // Basic URL validation - just check if it's a valid URL format
-      const urlPattern = /^https?:\/\/.+/i;
-      if (!urlPattern.test(url)) {
-        Alert.alert('Error', 'Please enter a valid URL starting with http:// or https://');
-        return;
-      }
-
-      // Reset error state
-      setImageError(false);
-
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      await updateDoc(userRef, {
-        profilePhoto: url,
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
       });
 
+      if (!result.canceled && result.assets[0]) {
+        await uploadToCloudinary(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  // Upload image to Cloudinary
+  const uploadToCloudinary = async (imageUri) => {
+    try {
+      setUploadingPhoto(true);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'profile.jpg',
+      });
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      // Upload to Cloudinary
+      const response = await axios.post(CLOUDINARY_URL, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const imageUrl = response.data.secure_url;
+
+      // Update Firestore
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        profilePhoto: imageUrl,
+      });
+
+      // Update local state
       setUserData(prev => ({
         ...prev,
-        profilePhoto: url,
+        profilePhoto: imageUrl,
       }));
 
-      setPhotoModalVisible(false);
-      setPhotoURL('');
       Alert.alert('Success', 'Profile photo updated!');
+      setUploadingPhoto(false);
     } catch (error) {
-      console.error('Error updating photo:', error);
-      Alert.alert('Error', 'Failed to update photo');
+      console.error('Error uploading to Cloudinary:', error);
+      Alert.alert('Error', 'Failed to upload photo');
+      setUploadingPhoto(false);
     }
   };
 
@@ -215,21 +252,23 @@ export default function PersonalProfile() {
       {/* Profile Info Row */}
       <View style={styles.topRow}>
         <View style={styles.profileImageContainer}>
-          <Pressable onPress={() => setPhotoModalVisible(true)}>
+          <Pressable onPress={pickAndUploadImage} disabled={uploadingPhoto}>
             {userData.profilePhoto ? (
-              <Image 
-                source={{ uri: userData.profilePhoto }} 
-                style={styles.profileImage}
-                onError={() => {
-                  console.log('Image failed to load');
-                  setImageError(true);
-                }}
-              />
+              <Image source={{ uri: userData.profilePhoto }} style={styles.profileImage} />
             ) : (
               <View style={[styles.profileImage, { backgroundColor: theme.uiBackground }]}>
                 <Ionicons name="person" size={40} color={theme.iconColor} />
               </View>
             )}
+            
+            {/* Upload Overlay */}
+            {uploadingPhoto && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            )}
+            
+            {/* Add Photo Button */}
             <View style={styles.addPhotoButton}>
               <Ionicons name="add-circle" size={32} color="#007AFF" />
             </View>
@@ -305,88 +344,6 @@ export default function PersonalProfile() {
         <Ionicons name="log-out-outline" size={28} color="#ff4444" />
       </Pressable>
 
-      {/* Change Photo Modal */}
-      <Modal
-        visible={photoModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setPhotoModalVisible(false);
-          setPhotoURL('');
-          setImageError(false);
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <View style={styles.modalHeader}>
-              <Pressable onPress={() => {
-                setPhotoModalVisible(false);
-                setPhotoURL('');
-                setImageError(false);
-              }}>
-                <Ionicons name="close" size={28} color={theme.iconColor} />
-              </Pressable>
-              <ThemedText title style={styles.modalTitle}>Change Photo</ThemedText>
-              <Pressable onPress={handleSavePhoto}>
-                <ThemedText style={styles.saveButton}>Save</ThemedText>
-              </Pressable>
-            </View>
-
-            <Spacer height={20} />
-
-            <ThemedText style={styles.label}>Profile Photo URL</ThemedText>
-            <ThemedText style={styles.hint}>
-              Paste a direct image URL (must start with http:// or https://)
-            </ThemedText>
-            <Spacer height={10} />
-            <TextInput
-              value={photoURL}
-              onChangeText={(text) => {
-                setPhotoURL(text);
-                setImageError(false);
-              }}
-              style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text }]}
-              placeholder="https://i.imgur.com/example.jpg"
-              placeholderTextColor={theme.iconColor}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Spacer height={16} />
-
-            {photoURL.trim() && /^https?:\/\/.+/i.test(photoURL) && (
-              <View style={styles.previewContainer}>
-                <ThemedText style={styles.label}>Preview:</ThemedText>
-                <Spacer height={8} />
-                <Image 
-                  source={{ uri: photoURL }} 
-                  style={styles.previewImage}
-                  onError={() => setImageError(true)}
-                />
-                {imageError && (
-                  <ThemedText style={styles.errorText}>
-                    ⚠️ Unable to load image. Please check the URL.
-                  </ThemedText>
-                )}
-              </View>
-            )}
-
-            <Spacer height={20} />
-
-            <View style={styles.tipsContainer}>
-              <ThemedText style={styles.tipTitle}>💡 How to get an image URL:</ThemedText>
-              <ThemedText style={styles.tipText}>
-                1. Go to <ThemedText style={{fontWeight: '600'}}>imgur.com</ThemedText> (free, no account){'\n'}
-                2. Click "New post" and upload your photo{'\n'}
-                3. Right-click the uploaded image{'\n'}
-                4. Select "Copy image address"{'\n'}
-                5. Paste the URL here
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Edit Profile Modal */}
       <Modal
         visible={editModalVisible}
@@ -408,12 +365,19 @@ export default function PersonalProfile() {
 
             <Spacer height={20} />
 
-            <Pressable onPress={() => {
-              setEditModalVisible(false);
-              setPhotoModalVisible(true);
-            }} style={styles.changePhotoButton}>
-              <Ionicons name="camera" size={20} color="#007AFF" />
-              <ThemedText style={styles.changePhotoText}>Change Profile Photo</ThemedText>
+            <Pressable 
+              onPress={pickAndUploadImage} 
+              style={styles.changePhotoButton}
+              disabled={uploadingPhoto}
+            >
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : (
+                <>
+                  <Ionicons name="camera" size={20} color="#007AFF" />
+                  <ThemedText style={styles.changePhotoText}>Change Profile Photo</ThemedText>
+                </>
+              )}
             </Pressable>
 
             <Spacer height={20} />
@@ -467,268 +431,229 @@ export default function PersonalProfile() {
 
 const styles = StyleSheet.create({
   
-  container: { 
-    flex: 1, 
-    paddingHorizontal: 16, 
-    paddingTop: 16 
+  // MAIN CONTAINERS
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
   },
 
-  centerContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    paddingHorizontal: 40 
+  // NOT LOGGED IN UI
+  notLoggedInTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  notLoggedInText: {
+    fontSize: 16,
+    opacity: 0.6,
+    textAlign: 'center',
+  },
+  loginButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
 
-  notLoggedInTitle: { 
-    fontSize: 24, 
-    fontWeight: '700', 
-    marginBottom: 8 
+  // PROFILE HEADER ROW
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileImageContainer: {
+    marginRight: 20,
+    position: 'relative',
+  },
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  notLoggedInText: { 
-    fontSize: 16, 
-    opacity: 0.6, 
-    textAlign: 'center' 
+  // LOADING OVERLAY ON PROFILE PIC
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  loginButton: { 
-    paddingHorizontal: 40, 
-    paddingVertical: 12, 
-    borderRadius: 10 
+  // ADD PHOTO BUTTON
+  addPhotoButton: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#fff',
+    borderRadius: 16,
   },
 
-  topRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  // STATS ROW
+  statsContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+  },
+  stat: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginTop: 2,
   },
 
-  profileImageContainer: { 
-    marginRight: 20, 
-    position: 'relative' 
+  // BIO SECTION
+  bioContainer: {
+    paddingHorizontal: 4,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  bio: {
+    fontSize: 14,
+    opacity: 0.8,
   },
 
-  profileImage: { 
-    width: 90, 
-    height: 90, 
-    borderRadius: 45, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  // EDIT PROFILE BUTTON
+  editButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    fontWeight: '600',
   },
 
-  addPhotoButton: { 
-    position: 'absolute', 
-    bottom: -4, 
-    right: -4, 
-    backgroundColor: '#fff', 
-    borderRadius: 16 
+  // DIVIDER
+  divider: {
+    height: 1,
+    marginVertical: 10,
   },
 
-  statsContainer: { 
-    flexDirection: 'row', 
-    flex: 1, 
-    justifyContent: 'space-around' 
+  // POSTS GRID
+  postImageContainer: {
+    margin: 1,
+  },
+  postImage: {
+    width: (windowWidth - 36) / 3,
+    height: (windowWidth - 36) / 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postContent: {
+    fontSize: 10,
+    padding: 4,
+    textAlign: 'center',
   },
 
-  stat: { 
-    alignItems: 'center' 
+  // EMPTY STATE
+  emptyPosts: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.5,
   },
 
-  statNumber: { 
-    fontSize: 18, 
-    fontWeight: '700' 
+  // LOGOUT BUTTON (FAB)
+  logoutButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 30,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 
-  statLabel: { 
-    fontSize: 13, 
-    opacity: 0.6, 
-    marginTop: 2 
+  // MODAL OVERLAY + CONTENT
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    minHeight: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  saveButton: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 
-  bioContainer: { 
-    paddingHorizontal: 4 
+  // CHANGE PHOTO BUTTON
+  changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    gap: 8,
+  },
+  changePhotoText: {
+    color: '#007AFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
-  username: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginBottom: 4 
+  // TEXT INPUTS
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
   },
-
-  bio: { 
-    fontSize: 14, 
-    opacity: 0.8 
+  input: {
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
   },
-
-  editButton: { 
-    borderRadius: 8, 
-    paddingVertical: 10, 
-    alignItems: 'center' 
+  bioInput: {
+    height: 100,
+    textAlignVertical: 'top',
   },
-
-  editButtonText: { 
-    fontWeight: '600' 
-  },
-
-  divider: { 
-    height: 1, 
-    marginVertical: 10 
-  },
-
-  postImageContainer: { 
-    margin: 1 
-  },
-
-  postImage: { 
-    width: (windowWidth - 36) / 3, 
-    height: (windowWidth - 36) / 3, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-
-  postContent: { 
-    fontSize: 10, 
-    padding: 4, 
-    textAlign: 'center' 
-  },
-
-  emptyPosts: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    paddingTop: 60 
-  },
-
-  emptyText: { 
-    marginTop: 16, 
-    fontSize: 16, 
-    opacity: 0.5 
-  },
-
-  logoutButton: { 
-    position: 'absolute', 
-    bottom: 20, 
-    right: 20, 
-    backgroundColor: '#ffffff', 
-    borderRadius: 30, 
-    padding: 12, 
-    shadowColor: '#000', 
-    shadowOffset: { 
-      width: 0, 
-      height: 2 
-    }, 
-    shadowOpacity: 0.25, 
-    shadowRadius: 3.84, 
-    elevation: 5 
-  },
-
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'flex-end' 
-  },
-
-  modalContent: { 
-    borderTopLeftRadius: 20, 
-    borderTopRightRadius: 20, 
-    padding: 20, 
-    maxHeight: '80%' 
-  },
-
-  modalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
-  },
-
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: '700' 
-  },
-
-  saveButton: { 
-    color: '#007AFF', 
-    fontSize: 16, 
-    fontWeight: '600' 
-  },
-
-  changePhotoButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    padding: 12, 
-    gap: 8 
-  },
-
-  changePhotoText: { 
-    color: '#007AFF', 
-    fontSize: 15, 
-    fontWeight: '600' 
-  },
-
-  label: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    marginBottom: 8 
-  },
-
-  hint: { 
-    fontSize: 13, 
-    opacity: 0.6, 
-    marginBottom: 4 
-  },
-
-  input: { 
-    borderRadius: 10, 
-    padding: 12, 
-    fontSize: 16 
-  },
-
-  bioInput: { 
-    height: 100, 
-    textAlignVertical: 'top' 
-  },
-
-  charCount: { 
-    fontSize: 12, 
-    opacity: 0.5, 
-    textAlign: 'right', 
-    marginTop: 4 
-  },
-
-  previewContainer: { 
-    alignItems: 'center' 
-  },
-
-  previewImage: { 
-    width: 150, 
-    height: 150, 
-    borderRadius: 75 
-  },
-
-  errorText: { 
-    marginTop: 12, 
-    fontSize: 13, 
-    color: '#ff4444', 
-    textAlign: 'center' 
-  },
-
-  tipsContainer: { 
-    backgroundColor: 'rgba(0, 122, 255, 0.1)', 
-    padding: 16, 
-    borderRadius: 12 
-  },
-
-  tipTitle: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    marginBottom: 8 
-  },
-
-  tipText: { 
-    fontSize: 13, 
-    opacity: 0.8, 
-    lineHeight: 20 
+  charCount: {
+    fontSize: 12,
+    opacity: 0.5,
+    textAlign: 'right',
+    marginTop: 4,
   },
 
 });

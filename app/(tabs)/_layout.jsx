@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, FlatList, Pressable, Keyboard, useColorScheme } from 'react-native';
+import { View, StyleSheet, TextInput, FlatList, Pressable, Keyboard, useColorScheme, Image } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { db, auth } from '../../firebase/firebase';
-import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import ThemedLogo from '../../components/ThemedLogo';
 import ThemedText from '../../components/ThemedText';
 import ThemedButton from '../../components/ThemedButton';
@@ -21,14 +21,12 @@ const TabsLayout = () => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
-  // Load search history when search becomes active
   useEffect(() => {
     if (searchActive && auth.currentUser) {
       loadSearchHistory();
     }
   }, [searchActive]);
 
-  // Load user's search history from Firestore
   const loadSearchHistory = async () => {
     try {
       if (!auth.currentUser) return;
@@ -43,7 +41,6 @@ const TabsLayout = () => {
     }
   };
 
-  // Save search to history (only when user clicks on result)
   const saveToHistory = async (item) => {
     try {
       if (!auth.currentUser) return;
@@ -52,39 +49,56 @@ const TabsLayout = () => {
         id: item.id,
         type: item.type,
         name: item.name,
-        image: item.profilePhoto || item.image || null,
+        image: item.profilePhoto || item.image || null, // ✅ Save actual image
         timestamp: new Date().toISOString(),
       };
 
-      // Get current history
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       let currentHistory = userDoc.exists() ? (userDoc.data().searchHistory || []) : [];
 
-      // Remove duplicate if exists (by id and type)
+      // Remove duplicate
       currentHistory = currentHistory.filter(h => !(h.id === item.id && h.type === item.type));
 
-      // Add new item at the beginning
+      // Add new item at beginning
       currentHistory = [historyItem, ...currentHistory];
 
-      // Keep only last 20 searches
+      // Keep only last 20
       if (currentHistory.length > 20) {
         currentHistory = currentHistory.slice(0, 20);
       }
 
-      // Update Firestore
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, {
         searchHistory: currentHistory
       });
 
-      // Update local state
       setSearchHistory(currentHistory);
     } catch (error) {
       console.error('Error saving search history:', error);
     }
   };
 
-  // Clear search history
+  // ✅ Delete single history item
+  const deleteHistoryItem = async (itemToDelete) => {
+    try {
+      if (!auth.currentUser) return;
+
+      const updatedHistory = searchHistory.filter(
+        item => !(item.id === itemToDelete.id && item.type === itemToDelete.type)
+      );
+
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        searchHistory: updatedHistory
+      });
+
+      setSearchHistory(updatedHistory);
+    } catch (error) {
+      console.error('Error deleting history item:', error);
+    }
+  };
+
+  // Clear all history
   const clearSearchHistory = async () => {
     try {
       if (!auth.currentUser) return;
@@ -99,7 +113,6 @@ const TabsLayout = () => {
     }
   };
 
-  // Search users AND clubs by name
   const handleSearch = async (text) => {
     setSearchQuery(text);
     if (!text?.trim()) {
@@ -128,14 +141,11 @@ const TabsLayout = () => {
     }
   };
 
-  // Navigate and save to history
   const handleSelectResult = async (item) => {
     if (!item?.id) return;
     
-    // Save to history
     await saveToHistory(item);
     
-    // Navigate
     setSearchActive(false);
     setSearchQuery('');
     setSearchResults([]);
@@ -179,7 +189,7 @@ const TabsLayout = () => {
             elevation: 0,
             height: 60,
             paddingBottom: 8,
-            display: searchActive ? 'none' : 'flex', // ✅ Hide tabs when searching
+            display: searchActive ? 'none' : 'flex',
           },
           tabBarActiveTintColor: theme.iconColorFocused,
           tabBarInactiveTintColor: theme.iconColor,
@@ -289,31 +299,59 @@ const TabsLayout = () => {
               ) : null
             )}
             renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.resultItem,
-                  pressed && styles.resultItemPressed
-                ]}
-                onPress={() => handleSelectResult(item)}
-              >
-                <View style={styles.resultContent}>
-                  <View style={[styles.resultIcon, { backgroundColor: theme.uiBackground }]}>
-                    <Ionicons name={item.type === 'user' ? 'person' : 'people'} size={22} color={theme.iconColorFocused} />
+              <View style={styles.resultItemWrapper}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.resultItem,
+                    pressed && styles.resultItemPressed
+                  ]}
+                  onPress={() => handleSelectResult(item)}
+                >
+                  <View style={styles.resultContent}>
+                    {/* ✅ Show actual profile photo */}
+                    <View style={[styles.resultIcon, { backgroundColor: theme.uiBackground }]}>
+                      {item.image || item.profilePhoto ? (
+                        <Image 
+                          source={{ uri: item.image || item.profilePhoto }} 
+                          style={styles.resultImage}
+                        />
+                      ) : (
+                        <Ionicons 
+                          name={item.type === 'user' ? 'person' : 'people'} 
+                          size={22} 
+                          color={theme.iconColorFocused} 
+                        />
+                      )}
+                    </View>
+
+                    <View style={styles.resultText}>
+                      <ThemedText style={styles.resultName}>{item.name || 'Unnamed'}</ThemedText>
+                      <ThemedText style={styles.resultType}>
+                        {item.type === 'user' ? 'User' : 'Club'}
+                      </ThemedText>
+                    </View>
+
+                    {searchQuery.trim() === '' ? (
+                      <Ionicons name="time-outline" size={18} color={theme.iconColor} style={{ opacity: 0.5 }} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={20} color={theme.iconColor} />
+                    )}
                   </View>
-                  <View style={styles.resultText}>
-                    <ThemedText style={styles.resultName}>{item.name || 'Unnamed'}</ThemedText>
-                    <ThemedText style={styles.resultType}>
-                      {item.type === 'user' ? 'User' : 'Club'}
-                    </ThemedText>
-                  </View>
-                  {searchQuery.trim() === '' && (
-                    <Ionicons name="time-outline" size={18} color={theme.iconColor} style={{ opacity: 0.5 }} />
-                  )}
-                  {searchQuery.trim() !== '' && (
-                    <Ionicons name="chevron-forward" size={20} color={theme.iconColor} />
-                  )}
-                </View>
-              </Pressable>
+                </Pressable>
+
+                {/* ✅ Delete button (only for history) */}
+                {searchQuery.trim() === '' && (
+                  <Pressable 
+                    style={styles.deleteButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      deleteHistoryItem(item);
+                    }}
+                  >
+                    <Ionicons name="close" size={20} color={theme.iconColor} style={{ opacity: 0.5 }} />
+                  </Pressable>
+                )}
+              </View>
             )}
             ListEmptyComponent={() => (
               <View style={styles.emptyState}>
@@ -333,7 +371,6 @@ const TabsLayout = () => {
 export default TabsLayout;
 
 const styles = StyleSheet.create({
-
   headerContainer: { 
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -342,28 +379,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: '100%',
   },
-
   headerButtons: {
     flexDirection: 'row',
     gap: 8,
   },
-
   iconButton: {
     padding: 8,
     borderRadius: 8,
   },
-
   searchContainer: {
     position: 'absolute',
     top: 120,
     left: 0,
     right: 0,
-    bottom: 0, // ✅ Changed from 60 to 0 since tabs are hidden
+    bottom: 0,
     zIndex: 1000,
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,7 +405,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 16,
   },
-
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16 },
   historyHeader: {
@@ -382,60 +414,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 12,
   },
-
   historyTitle: {
     fontSize: 16,
     fontWeight: '600',
   },
-
   clearButton: {
     fontSize: 14,
     color: '#007AFF',
   },
-
+  resultItemWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   resultItem: { 
-    paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, marginBottom: 4 
+    flex: 1,
+    paddingVertical: 12, 
+    paddingHorizontal: 8, 
+    borderRadius: 8,
   },
-
-  resultItemPressed: { 
-    opacity: 0.6 
-  },
-
-  resultContent: {
-     flexDirection: 'row', 
-     alignItems: 'center', 
-     gap: 12 
-  },
-
+  resultItemPressed: { opacity: 0.6 },
+  resultContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   resultIcon: { 
     width: 44, 
     height: 44, 
     borderRadius: 22, 
     justifyContent: 'center', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-
+  resultImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   resultText: { 
     flex: 1 
   },
-
-  resultName: {
-     fontSize: 16, 
-     fontWeight: '600', 
-     marginBottom: 2 
+  resultName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginBottom: 2 
   },
 
   resultType: { 
     fontSize: 13, 
     opacity: 0.6 
   },
-
-  emptyState: {
-     alignItems: 'center', 
-     justifyContent: 'center', 
-     paddingVertical: 60 
-    },
-
+  deleteButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  emptyState: { 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    paddingVertical: 60 
+  },
   emptyText: { 
     marginTop: 12, 
     fontSize: 15, 

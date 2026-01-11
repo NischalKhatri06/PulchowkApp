@@ -1,113 +1,314 @@
-import React, { useState } from 'react'
-import { StyleSheet, Text, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native'
-import { useRouter } from 'expo-router'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import React, { useState } from 'react';
+import { StyleSheet, TouchableWithoutFeedback, Keyboard, Alert, ActivityIndicator, ImageBackground, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { auth, db } from '../../firebase/firebase'
-import ThemedView from '../../components/ThemedView'
-import ThemedText from '../../components/ThemedText'
-import Spacer from '../../components/Spacer'
-import ThemedButton from '../../components/ThemedButton'
-import ThemedTextInput from '../../components/ThemedTextInput'
+import { auth, db } from '../../firebase/firebase';
+import ThemedText from '../../components/ThemedText';
+import Spacer from '../../components/Spacer';
+import ThemedButton from '../../components/ThemedButton';
+import ThemedTextInput from '../../components/ThemedTextInput';
+import { useColorScheme } from 'react-native';
+import { Colors } from '../../constants/colors';
 
 const SignUp = () => {
-  const router = useRouter()
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields')
-      return
+  const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword) {
+      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords Don\'t Match', 'Please make sure both passwords match.');
+      return;
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // 1️⃣ Create Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      )
+      // Create account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      const user = userCredential.user
+      // Send verification email
+      await sendEmailVerification(user);
 
-      // 2️⃣ Create Firestore user profile
-      await setDoc(doc(db, 'users', user.uid), {
-        email: user.email,
-        name: user.email.split('@')[0], // temporary name
-        profilePhoto: null,
-        following: [],
-        createdAt: serverTimestamp(),
-      })
+      // ✅ DON'T create Firestore document yet - will be created on first login after verification
 
-      // 3️⃣ Redirect to Home
-      router.replace('/profile/authPage')
+      Alert.alert(
+        'Account Created! 🎉',
+        'A verification email has been sent. Please verify your email, then login to complete setup.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('/profile/verify')
+          }
+        ]
+      );
 
     } catch (error) {
-      Alert.alert('Signup Error', error.message)
+      console.error('Signup error:', error);
+
+      let errorMessage = 'Failed to create account.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak.';
+      }
+
+      Alert.alert('Sign Up Failed', errorMessage);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <ThemedView style={styles.container}>
+      <ImageBackground 
+        source={require('../../assets/tree.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={
+            colorScheme === 'dark' 
+              ? ['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.85)']
+              : ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.85)']
+          }
+          style={styles.gradient}
+        >
+          {/* Back Button */}
+          <View style={styles.headerContainer}>
+            <ThemedButton onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={28} color={theme.iconColor} />
+            </ThemedButton>
+          </View>
 
-        <ThemedText title style={styles.title}>
-          Sign up your new account
-        </ThemedText>
+          <Spacer height={40} />
 
-        <Spacer height={20} />
+          {/* Title */}
+          <View style={styles.titleContainer}>
+            <ThemedText title style={styles.title}>Join Us</ThemedText>
+            <ThemedText style={styles.subtitle}>Create your account</ThemedText>
+          </View>
 
-        <ThemedTextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          value={email}
-        />
+          <Spacer height={30} />
 
-        <Spacer height={20} />
+          {/* SignUp Card */}
+          <View style={[
+            styles.card,
+            { backgroundColor: colorScheme === 'dark' ? 'rgba(20,20,20,0.9)' : 'rgba(255,255,255,0.95)' }
+          ]}>
+            <ThemedText style={styles.cardTitle}>Sign Up</ThemedText>
 
-        <ThemedTextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          onChangeText={setPassword}
-          value={password}
-        />
+            <Spacer height={20} />
 
-        <Spacer />
+            {/* Email */}
+            <ThemedTextInput
+              style={styles.input}
+              placeholder="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
 
-        <ThemedButton onPress={handleSubmit} disabled={loading}>
-          <ThemedText>
-            {loading ? 'Creating...' : 'Sign Up'}
-          </ThemedText>
-        </ThemedButton>
+            <Spacer height={14} />
 
-      </ThemedView>
+            {/* Password */}
+            <View style={styles.passwordContainer}>
+              <ThemedTextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Password (min. 6 characters)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!loading}
+              />
+              <ThemedButton 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons 
+                  name={showPassword ? 'eye-off' : 'eye'} 
+                  size={22} 
+                  color={theme.iconColor} 
+                />
+              </ThemedButton>
+            </View>
+
+            <Spacer height={14} />
+
+            {/* Confirm Password */}
+            <View style={styles.passwordContainer}>
+              <ThemedTextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                editable={!loading}
+              />
+              <ThemedButton 
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons 
+                  name={showConfirmPassword ? 'eye-off' : 'eye'} 
+                  size={22} 
+                  color={theme.iconColor} 
+                />
+              </ThemedButton>
+            </View>
+
+            <Spacer height={24} />
+
+            {/* Sign Up Button */}
+            <ThemedButton 
+              onPress={handleSignUp} 
+              disabled={loading}
+              style={[styles.signupButton, { backgroundColor: '#007AFF' }]}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <ThemedText style={styles.signupButtonText}>Create Account</ThemedText>
+              )}
+            </ThemedButton>
+
+            <Spacer height={16} />
+
+            {/* Login Link */}
+            <View style={styles.loginContainer}>
+              <ThemedText style={styles.loginText}>Already have an account? </ThemedText>
+              <ThemedButton onPress={() => router.push('/profile/login')}>
+                <ThemedText style={styles.loginLink}>Login</ThemedText>
+              </ThemedButton>
+            </View>
+          </View>
+
+          <Spacer height={40} />
+        </LinearGradient>
+      </ImageBackground>
     </TouchableWithoutFeedback>
-  )
-}
+  );
+};
 
-export default SignUp
+export default SignUp;
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  gradient: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  headerContainer: {
+    paddingTop: 50,
+  },
+  backButton: {
+    padding: 8,
+    width: 44,
+  },
+  titleContainer: {
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
+    fontSize: 34,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   input: {
-    width: '80%',
+    width: '100%',
   },
-})
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    position: 'relative',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 8,
+  },
+  signupButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signupButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginText: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  loginLink: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+});

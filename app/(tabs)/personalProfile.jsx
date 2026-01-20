@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, FlatList, Dimensions, Alert, TextInput, Modal, Pressable, ActivityIndicator } from 'react-native';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { View, StyleSheet, Image, FlatList, Dimensions, Alert, TextInput, Modal, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,9 @@ import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import FollowersModal from '../../components/FollowersModal';
+import PostCard from '../../components/PostCard';
+import CommentModal from '../../components/CommentModal';
+import CreatePostButton from '../../components/CreatePostButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/colors';
@@ -33,10 +36,13 @@ export default function PersonalProfile() {
   const [userData, setUserData] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
 
@@ -83,6 +89,7 @@ export default function PersonalProfile() {
       const q = query(
         postsRef, 
         where('authorId', '==', auth.currentUser.uid),
+        orderBy('createdAt', 'desc'),
         limit(50)
       );
       const snapshot = await getDocs(q);
@@ -96,6 +103,18 @@ export default function PersonalProfile() {
     } catch (error) {
       console.error('Error loading posts:', error);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadUserData();
+    await loadUserPosts();
+    setRefreshing(false);
+  };
+
+  const handleCommentPress = (post) => {
+    setSelectedPost(post);
+    setCommentModalVisible(true);
   };
 
   // Pick image and upload to Cloudinary
@@ -430,230 +449,66 @@ export default function PersonalProfile() {
 }
 
 const styles = StyleSheet.create({
-  
-  // MAIN CONTAINERS
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  notLoggedInTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
+  notLoggedInText: { fontSize: 16, opacity: 0.6, textAlign: 'center' },
+  loginButton: { paddingHorizontal: 40, paddingVertical: 12, borderRadius: 10 },
+  topRow: { flexDirection: 'row', alignItems: 'center' },
+  profileImageContainer: { marginRight: 20, position: 'relative' },
+  profileImage: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center' },
+  uploadingOverlay: { 
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    borderRadius: 45, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
+  addPhotoButton: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#fff', borderRadius: 16 },
+  statsContainer: { flexDirection: 'row', flex: 1, justifyContent: 'space-around' },
+  stat: { alignItems: 'center' },
+  statNumber: { fontSize: 18, fontWeight: '700' },
+  statLabel: { fontSize: 13, opacity: 0.6, marginTop: 2 },
+  bioContainer: { paddingHorizontal: 4 },
+  username: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  bio: { fontSize: 14, opacity: 0.8 },
+  editButton: { borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  editButtonText: { fontWeight: '600' },
+  divider: { height: 1, marginVertical: 10 },
+  emptyPosts: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
+  emptyText: { marginTop: 16, fontSize: 16, opacity: 0.5 },
+  logoutButton: { 
+    position: 'absolute', 
+    bottom: 150,
+    right: 20, 
+    backgroundColor: '#ffffff', 
+    borderRadius: 30, 
+    padding: 12, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 3.84, 
+    elevation: 5 
   },
-
-  // NOT LOGGED IN UI
-  notLoggedInTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 400 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
+  saveButton: { color: '#007AFF', fontSize: 16, fontWeight: '600' },
+  changePhotoButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    padding: 12, 
+    gap: 8 
   },
-  notLoggedInText: {
-    fontSize: 16,
-    opacity: 0.6,
-    textAlign: 'center',
-  },
-  loginButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-
-  // PROFILE HEADER ROW
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImageContainer: {
-    marginRight: 20,
-    position: 'relative',
-  },
-  profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // LOADING OVERLAY ON PROFILE PIC
-  uploadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // ADD PHOTO BUTTON
-  addPhotoButton: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-  },
-
-  // STATS ROW
-  statsContainer: {
-    flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'space-around',
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: 13,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-
-  // BIO SECTION
-  bioContainer: {
-    paddingHorizontal: 4,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  bio: {
-    fontSize: 14,
-    opacity: 0.8,
-  },
-
-  // EDIT PROFILE BUTTON
-  editButton: {
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    fontWeight: '600',
-  },
-
-  // DIVIDER
-  divider: {
-    height: 1,
-    marginVertical: 10,
-  },
-
-  // POSTS GRID
-  postImageContainer: {
-    margin: 1,
-  },
-  postImage: {
-    width: (windowWidth - 36) / 3,
-    height: (windowWidth - 36) / 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  postContent: {
-    fontSize: 10,
-    padding: 4,
-    textAlign: 'center',
-  },
-
-  // EMPTY STATE
-  emptyPosts: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    opacity: 0.5,
-  },
-
-  // LOGOUT BUTTON (FAB)
-  logoutButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 30,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-
-  // MODAL OVERLAY + CONTENT
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    minHeight: 400,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  saveButton: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // CHANGE PHOTO BUTTON
-  changePhotoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    gap: 8,
-  },
-  changePhotoText: {
-    color: '#007AFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // TEXT INPUTS
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-  },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  charCount: {
-    fontSize: 12,
-    opacity: 0.5,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-
+  changePhotoText: { color: '#007AFF', fontSize: 15, fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  input: { borderRadius: 10, padding: 12, fontSize: 16 },
+  bioInput: { height: 100, textAlignVertical: 'top' },
+  charCount: { fontSize: 12, opacity: 0.5, textAlign: 'right', marginTop: 4 },
 });

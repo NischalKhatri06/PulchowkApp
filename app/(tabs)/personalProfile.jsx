@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, FlatList, Dimensions, Alert, TextInput, Modal, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, Image, Dimensions, Alert, TextInput, Modal, Pressable, ActivityIndicator, ScrollView, FlatList } from 'react-native';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import { signOut } from 'firebase/auth';
@@ -12,7 +12,7 @@ import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
 import FollowersModal from '../../components/FollowersModal';
-import PostCard from '../../components/PostCard';
+import PostDetailModal from '../../components/PostDetailModal';
 import CommentModal from '../../components/CommentModal';
 import CreatePostButton from '../../components/CreatePostButton';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +41,9 @@ export default function PersonalProfile() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
+  const [postDetailModalVisible, setPostDetailModalVisible] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
@@ -110,6 +112,11 @@ export default function PersonalProfile() {
     await loadUserData();
     await loadUserPosts();
     setRefreshing(false);
+  };
+
+  const handlePostPress = (postId) => {
+    setSelectedPostId(postId);
+    setPostDetailModalVisible(true);
   };
 
   const handleCommentPress = (post) => {
@@ -336,7 +343,10 @@ export default function PersonalProfile() {
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (
-            <View style={styles.postImageContainer}>
+            <Pressable 
+              style={styles.postImageContainer}
+              onPress={() => handlePostPress(item.id)}
+            >
               {item.image ? (
                 <Image source={{ uri: item.image }} style={styles.postImage} />
               ) : (
@@ -346,7 +356,7 @@ export default function PersonalProfile() {
                   </ThemedText>
                 </View>
               )}
-            </View>
+            </Pressable>
           )}
           contentContainerStyle={{ paddingBottom: 80 }}
           initialNumToRender={9}
@@ -444,6 +454,30 @@ export default function PersonalProfile() {
         type="following"
         currentUserId={auth.currentUser?.uid}
       />
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        visible={postDetailModalVisible}
+        onClose={() => {
+          setPostDetailModalVisible(false);
+          loadUserPosts(); // Refresh posts
+        }}
+        postId={selectedPostId}
+        onCommentPress={(post) => {
+          setPostDetailModalVisible(false);
+          handleCommentPress(post);
+        }}
+      />
+
+      {/* Comment Modal */}
+      <CommentModal
+        visible={commentModalVisible}
+        onClose={() => {
+          setCommentModalVisible(false);
+          loadUserPosts(); // Refresh to show new comment count
+        }}
+        post={selectedPost}
+      />
     </ThemedView>
   );
 }
@@ -479,6 +513,20 @@ const styles = StyleSheet.create({
   editButton: { borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
   editButtonText: { fontWeight: '600' },
   divider: { height: 1, marginVertical: 10 },
+  postImageContainer: {
+    margin: 1,
+  },
+  postImage: {
+    width: (windowWidth - 36) / 3,
+    height: (windowWidth - 36) / 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postContent: {
+    fontSize: 10,
+    padding: 4,
+    textAlign: 'center',
+  },
   emptyPosts: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
   emptyText: { marginTop: 16, fontSize: 16, opacity: 0.5 },
   logoutButton: { 

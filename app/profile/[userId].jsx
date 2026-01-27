@@ -7,6 +7,8 @@ import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
 import ThemedButton from '../../components/ThemedButton';
+import PostDetailModal from '../../components/PostDetailModal';
+import CommentModal from '../../components/CommentModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/colors';
@@ -23,6 +25,10 @@ export default function UserProfile() {
   const [userPosts, setUserPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [postDetailModalVisible, setPostDetailModalVisible] = useState(false);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   useEffect(() => {
     if (!userId) {
@@ -77,6 +83,16 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Error loading posts:', error);
     }
+  };
+
+  const handlePostPress = (postId) => {
+    setSelectedPostId(postId);
+    setPostDetailModalVisible(true);
+  };
+
+  const handleCommentPress = (post) => {
+    setSelectedPost(post);
+    setCommentModalVisible(true);
   };
 
   // Follow/Unfollow user
@@ -242,7 +258,10 @@ export default function UserProfile() {
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (
-            <View style={styles.postImageContainer}>
+            <Pressable 
+              style={styles.postImageContainer}
+              onPress={() => handlePostPress(item.id)}
+            >
               {item.image ? (
                 <Image source={{ uri: item.image }} style={styles.postImage} />
               ) : (
@@ -252,7 +271,7 @@ export default function UserProfile() {
                   </ThemedText>
                 </View>
               )}
-            </View>
+            </Pressable>
           )}
           contentContainerStyle={{ paddingBottom: 80 }}
         />
@@ -262,6 +281,30 @@ export default function UserProfile() {
           <ThemedText style={styles.emptyText}>No posts yet</ThemedText>
         </View>
       )}
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        visible={postDetailModalVisible}
+        onClose={() => {
+          setPostDetailModalVisible(false);
+          loadUserPosts(); // Refresh posts
+        }}
+        postId={selectedPostId}
+        onCommentPress={(post) => {
+          setPostDetailModalVisible(false);
+          handleCommentPress(post);
+        }}
+      />
+
+      {/* Comment Modal */}
+      <CommentModal
+        visible={commentModalVisible}
+        onClose={() => {
+          setCommentModalVisible(false);
+          loadUserPosts(); // Refresh to show new comment count
+        }}
+        post={selectedPost}
+      />
     </ThemedView>
   );
 }

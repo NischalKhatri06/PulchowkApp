@@ -9,7 +9,7 @@ import ThemedText from './ThemedText';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/colors';
 
-export default function PostCard({ post, onCommentPress }) {
+export default function PostCard({ post, onCommentPress, onPostPress }) {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
@@ -86,7 +86,10 @@ export default function PostCard({ post, onCommentPress }) {
   };
 
   return (
-    <ThemedView style={[styles.container, { borderBottomColor: theme.iconColor }]}>
+    <Pressable 
+      style={[styles.container, { borderBottomColor: theme.iconColor }]}
+      onPress={() => onPostPress && onPostPress(post)}
+    >
       {/* Author Header */}
       <Pressable style={styles.header} onPress={handleAuthorPress}>
         <View style={[styles.avatar, { backgroundColor: theme.uiBackground }]}>
@@ -116,7 +119,7 @@ export default function PostCard({ post, onCommentPress }) {
 
       {/* Post Content */}
       {post.content && (
-        <ThemedText style={styles.content}>{post.content}</ThemedText>
+        <ThemedText style={styles.content} numberOfLines={6}>{post.content}</ThemedText>
       )}
 
       {/* Post Image */}
@@ -127,7 +130,10 @@ export default function PostCard({ post, onCommentPress }) {
       {/* Action Buttons */}
       <View style={styles.actions}>
         {/* Like */}
-        <Pressable onPress={handleLike} style={styles.actionButton}>
+        <Pressable onPress={(e) => {
+          e.stopPropagation();
+          handleLike();
+        }} style={styles.actionButton}>
           <Ionicons 
             name={liked ? 'heart' : 'heart-outline'} 
             size={24} 
@@ -138,7 +144,10 @@ export default function PostCard({ post, onCommentPress }) {
 
         {/* Comment */}
         <Pressable 
-          onPress={() => onCommentPress(post)} 
+          onPress={(e) => {
+            e.stopPropagation();
+            onCommentPress(post);
+          }}
           style={styles.actionButton}
         >
           <Ionicons name="chatbubble-outline" size={22} color={theme.iconColor} />
@@ -149,14 +158,17 @@ export default function PostCard({ post, onCommentPress }) {
 
         {/* Share (Coming Soon) */}
         <Pressable 
-          onPress={() => alert('Share feature coming soon!')}
+          onPress={(e) => {
+            e.stopPropagation();
+            alert('Share feature coming soon!');
+          }}
           style={styles.actionButton}
         >
           <Ionicons name="share-outline" size={22} color={theme.iconColor} />
           <ThemedText style={styles.actionText}>{post.shares || 0}</ThemedText>
         </Pressable>
       </View>
-    </ThemedView>
+    </Pressable>
   );
 }
 

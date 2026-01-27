@@ -7,6 +7,8 @@ import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
 import ThemedButton from '../../../components/ThemedButton';
 import Spacer from '../../../components/Spacer';
+import PostDetailModal from '../../../components/PostDetailModal';
+import CommentModal from '../../../components/CommentModal';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../../constants/colors';
@@ -23,6 +25,10 @@ export default function ClubProfile() {
   const [clubPosts, setClubPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [postDetailModalVisible, setPostDetailModalVisible] = useState(false);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   useEffect(() => {
     loadClubData();
@@ -71,6 +77,16 @@ export default function ClubProfile() {
     } catch (error) {
       console.error('Error loading club posts:', error);
     }
+  };
+
+  const handlePostPress = (postId) => {
+    setSelectedPostId(postId);
+    setPostDetailModalVisible(true);
+  };
+
+  const handleCommentPress = (post) => {
+    setSelectedPost(post);
+    setCommentModalVisible(true);
   };
 
   const handleFollowToggle = async () => {
@@ -205,7 +221,10 @@ export default function ClubProfile() {
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (
-            <View style={styles.postImageContainer}>
+            <Pressable 
+              style={styles.postImageContainer}
+              onPress={() => handlePostPress(item.id)}
+            >
               {item.image ? (
                 <Image source={{ uri: item.image }} style={styles.postImage} />
               ) : (
@@ -215,7 +234,7 @@ export default function ClubProfile() {
                   </ThemedText>
                 </View>
               )}
-            </View>
+            </Pressable>
           )}
           contentContainerStyle={{ paddingBottom: 80 }}
           initialNumToRender={9}
@@ -227,6 +246,30 @@ export default function ClubProfile() {
           <ThemedText style={styles.emptyText}>No posts yet</ThemedText>
         </View>
       )}
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        visible={postDetailModalVisible}
+        onClose={() => {
+          setPostDetailModalVisible(false);
+          loadClubPosts(); // Refresh posts
+        }}
+        postId={selectedPostId}
+        onCommentPress={(post) => {
+          setPostDetailModalVisible(false);
+          handleCommentPress(post);
+        }}
+      />
+
+      {/* Comment Modal */}
+      <CommentModal
+        visible={commentModalVisible}
+        onClose={() => {
+          setCommentModalVisible(false);
+          loadClubPosts(); // Refresh to show new comment count
+        }}
+        post={selectedPost}
+      />
     </ThemedView>
   );
 }

@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   TextInput,
   Modal,
   Alert,
   ActivityIndicator,
   Linking,
+  Pressable,
 } from 'react-native';
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { db, storage, auth } from '../../firebase/firebase';
+import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
+import { Colors } from '../../constants/colors';
+import ThemedView from '../../components/ThemedView';
+import ThemedText from '../../components/ThemedText';
+import ThemedButton from '../../components/ThemedButton';
 
 // DEPARTMENTS DATA
 const DEPARTMENTS = [
@@ -32,6 +37,9 @@ const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 const SUBJECTS = ['Subject 1', 'Subject 2', 'Subject 3', 'Subject 4', 'Subject 5', 'Subject 6'];
 
 export default function Notes() {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
+
   // Navigation State
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
@@ -132,7 +140,6 @@ export default function Notes() {
         title: uploadTitle,
         type: uploadType,
         timestamp: new Date(),
-        // TODO: Add uploader info - Replace 'anonymous' with auth.currentUser.uid or displayName
         uploadedBy: auth.currentUser?.email || 'anonymous',
       };
 
@@ -182,212 +189,247 @@ export default function Notes() {
   };
 
   const renderDepartmentSelector = () => (
-    <View style={styles.container}>
-      <Text style={styles.header}>SELECT DEPARTMENT</Text>
+    <ThemedView style={styles.container}>
+      <ThemedText title style={styles.header}>SELECT DEPARTMENT</ThemedText>
       <ScrollView contentContainerStyle={styles.gridContainer}>
         {DEPARTMENTS.map((dept, index) => (
-          <TouchableOpacity
+          <ThemedButton
             key={index}
-            style={styles.card}
+            style={[styles.card, { backgroundColor: theme.uiBackground }]}
             onPress={() => setSelectedDepartment(dept)}
           >
-            <Text style={styles.cardText}>{dept}</Text>
-          </TouchableOpacity>
+            <ThemedText style={styles.cardText}>{dept}</ThemedText>
+          </ThemedButton>
         ))}
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 
   const renderSemesterSelector = () => (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => setSelectedDepartment(null)} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.header}>{selectedDepartment}</Text>
-      <Text style={styles.subHeader}>SELECT SEMESTER</Text>
+    <ThemedView style={styles.container}>
+      <ThemedButton onPress={() => setSelectedDepartment(null)} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={20} color={theme.iconColorFocused} />
+        <ThemedText style={styles.backButtonText}>Back</ThemedText>
+      </ThemedButton>
+      <ThemedText title style={styles.header}>{selectedDepartment}</ThemedText>
+      <ThemedText style={styles.subHeader}>SELECT SEMESTER</ThemedText>
       <ScrollView contentContainerStyle={styles.gridContainer}>
         {SEMESTERS.map((sem) => (
-          <TouchableOpacity
+          <ThemedButton
             key={sem}
-            style={styles.card}
+            style={[styles.card, { backgroundColor: theme.uiBackground }]}
             onPress={() => setSelectedSemester(sem)}
           >
-            <Text style={styles.cardText}>SEMESTER {sem}</Text>
-          </TouchableOpacity>
+            <ThemedText style={styles.cardText}>SEMESTER {sem}</ThemedText>
+          </ThemedButton>
         ))}
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 
   const renderSubjectSelector = () => (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => setSelectedSemester(null)} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.header}>SEMESTER {selectedSemester}</Text>
-      <Text style={styles.subHeader}>SELECT SUBJECT</Text>
+    <ThemedView style={styles.container}>
+      <ThemedButton onPress={() => setSelectedSemester(null)} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={20} color={theme.iconColorFocused} />
+        <ThemedText style={styles.backButtonText}>Back</ThemedText>
+      </ThemedButton>
+      <ThemedText title style={styles.header}>SEMESTER {selectedSemester}</ThemedText>
+      <ThemedText style={styles.subHeader}>SELECT SUBJECT</ThemedText>
       <ScrollView contentContainerStyle={styles.gridContainer}>
         {SUBJECTS.map((subject, index) => (
-          <TouchableOpacity
+          <ThemedButton
             key={index}
-            style={styles.card}
+            style={[styles.card, { backgroundColor: theme.uiBackground }]}
             onPress={() => setSelectedSubject(subject)}
           >
-            <Text style={styles.cardText}>{subject}</Text>
-          </TouchableOpacity>
+            <ThemedText style={styles.cardText}>{subject}</ThemedText>
+          </ThemedButton>
         ))}
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 
   const renderSubjectView = () => {
     const currentData = activeTab === 'notes' ? notesData : labReportsData;
 
     return (
-      <View style={styles.container}>
-        <TouchableOpacity onPress={() => setSelectedSubject(null)} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.header}>{selectedSubject}</Text>
+      <ThemedView style={styles.container}>
+        <ThemedButton onPress={() => setSelectedSubject(null)} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={20} color={theme.iconColorFocused} />
+          <ThemedText style={styles.backButtonText}>Back</ThemedText>
+        </ThemedButton>
+        <ThemedText title style={styles.header}>{selectedSubject}</ThemedText>
 
         {/* Tabs */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'notes' && styles.activeTab]}
+        <View style={[styles.tabContainer, { borderBottomColor: theme.iconColor }]}>
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'notes' && { borderBottomWidth: 3, borderBottomColor: theme.iconColorFocused }
+            ]}
             onPress={() => setActiveTab('notes')}
           >
-            <Text style={[styles.tabText, activeTab === 'notes' && styles.activeTabText]}>
+            <ThemedText style={[
+              styles.tabText,
+              { color: activeTab === 'notes' ? theme.iconColorFocused : theme.iconColor }
+            ]}>
               NOTES
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'labReports' && styles.activeTab]}
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'labReports' && { borderBottomWidth: 3, borderBottomColor: theme.iconColorFocused }
+            ]}
             onPress={() => setActiveTab('labReports')}
           >
-            <Text style={[styles.tabText, activeTab === 'labReports' && styles.activeTabText]}>
+            <ThemedText style={[
+              styles.tabText,
+              { color: activeTab === 'labReports' ? theme.iconColorFocused : theme.iconColor }
+            ]}>
               LAB REPORTS
-            </Text>
-          </TouchableOpacity>
+            </ThemedText>
+          </Pressable>
         </View>
 
         {/* Upload Button */}
-        <TouchableOpacity
-          style={styles.uploadButton}
+        <ThemedButton
+          style={[styles.uploadButton, { backgroundColor: '#007AFF' }]}
           onPress={() => setUploadModalVisible(true)}
         >
-          <Text style={styles.uploadButtonText}>+ UPLOAD</Text>
-        </TouchableOpacity>
+          <Ionicons name="add-circle-outline" size={20} color="#fff" />
+          <ThemedText style={styles.uploadButtonText}>UPLOAD</ThemedText>
+        </ThemedButton>
 
         {/* Content List */}
         {loading ? (
-          <ActivityIndicator size="large" color="#E10600" style={{ marginTop: 50 }} />
+          <ActivityIndicator size="large" color={theme.iconColorFocused} style={{ marginTop: 50 }} />
         ) : (
           <ScrollView style={styles.contentList}>
             {currentData.length === 0 ? (
-              <Text style={styles.emptyText}>No {activeTab === 'notes' ? 'notes' : 'lab reports'} yet. Be the first to upload!</Text>
+              <View style={styles.emptyContainer}>
+                <Ionicons name="document-outline" size={64} color={theme.iconColor} style={{ opacity: 0.3 }} />
+                <ThemedText style={styles.emptyText}>
+                  No {activeTab === 'notes' ? 'notes' : 'lab reports'} yet
+                </ThemedText>
+                <ThemedText style={styles.emptySubtext}>Be the first to upload!</ThemedText>
+              </View>
             ) : (
               currentData.map((item) => (
-                <TouchableOpacity
+                <ThemedButton
                   key={item.id}
-                  style={styles.contentCard}
+                  style={[styles.contentCard, { backgroundColor: theme.uiBackground }]}
                   onPress={() => item.type === 'link' ? openLink(item.url) : openLink(item.fileUrl)}
                 >
-                  <Text style={styles.contentTitle}>{item.title}</Text>
-                  <Text style={styles.contentMeta}>
-                    {item.type === 'pdf' ? '📄 PDF' : '🔗 Link'} • {item.uploadedBy}
-                  </Text>
-                </TouchableOpacity>
+                  <View style={styles.contentHeader}>
+                    <Ionicons 
+                      name={item.type === 'pdf' ? 'document-text' : 'link'} 
+                      size={24} 
+                      color={theme.iconColorFocused} 
+                    />
+                    <View style={styles.contentTextContainer}>
+                      <ThemedText style={styles.contentTitle}>{item.title}</ThemedText>
+                      <ThemedText style={styles.contentMeta}>
+                        {item.type === 'pdf' ? 'PDF' : 'Link'} • {item.uploadedBy}
+                      </ThemedText>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={theme.iconColor} />
+                  </View>
+                </ThemedButton>
               ))
             )}
           </ScrollView>
         )}
-      </View>
+      </ThemedView>
     );
   };
 
   const renderUploadModal = () => (
     <Modal visible={uploadModalVisible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
           {!passwordVerified ? (
             <>
-              <Text style={styles.modalTitle}>ENTER PASSWORD</Text>
+              <ThemedText title style={styles.modalTitle}>ENTER PASSWORD</ThemedText>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
                 placeholder="Password"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.iconColor}
                 secureTextEntry
                 value={passwordInput}
                 onChangeText={setPasswordInput}
               />
               <View style={styles.modalButtons}>
-                <TouchableOpacity style={styles.cancelButton} onPress={resetUploadModal}>
-                  <Text style={styles.cancelButtonText}>CANCEL</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.submitButton} onPress={handlePasswordSubmit}>
-                  <Text style={styles.submitButtonText}>SUBMIT</Text>
-                </TouchableOpacity>
+                <ThemedButton style={[styles.cancelButton, { backgroundColor: theme.uiBackground }]} onPress={resetUploadModal}>
+                  <ThemedText style={styles.cancelButtonText}>CANCEL</ThemedText>
+                </ThemedButton>
+                <ThemedButton style={[styles.submitButton, { backgroundColor: '#007AFF' }]} onPress={handlePasswordSubmit}>
+                  <ThemedText style={styles.submitButtonText}>SUBMIT</ThemedText>
+                </ThemedButton>
               </View>
             </>
           ) : !uploadType ? (
             <>
-              <Text style={styles.modalTitle}>SELECT UPLOAD TYPE</Text>
-              <TouchableOpacity
-                style={styles.typeButton}
+              <ThemedText title style={styles.modalTitle}>SELECT UPLOAD TYPE</ThemedText>
+              <ThemedButton
+                style={[styles.typeButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => setUploadType('pdf')}
               >
-                <Text style={styles.typeButtonText}>📄 UPLOAD PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.typeButton}
+                <Ionicons name="document" size={20} color="#fff" />
+                <ThemedText style={styles.typeButtonText}>UPLOAD PDF</ThemedText>
+              </ThemedButton>
+              <ThemedButton
+                style={[styles.typeButton, { backgroundColor: '#007AFF' }]}
                 onPress={() => setUploadType('link')}
               >
-                <Text style={styles.typeButtonText}>🔗 ADD LINK</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelButton} onPress={resetUploadModal}>
-                <Text style={styles.cancelButtonText}>CANCEL</Text>
-              </TouchableOpacity>
+                <Ionicons name="link" size={20} color="#fff" />
+                <ThemedText style={styles.typeButtonText}>ADD LINK</ThemedText>
+              </ThemedButton>
+              <ThemedButton style={[styles.cancelButton, { backgroundColor: theme.uiBackground }]} onPress={resetUploadModal}>
+                <ThemedText style={styles.cancelButtonText}>CANCEL</ThemedText>
+              </ThemedButton>
             </>
           ) : (
             <>
-              <Text style={styles.modalTitle}>
+              <ThemedText title style={styles.modalTitle}>
                 {uploadType === 'pdf' ? 'UPLOAD PDF' : 'ADD LINK'}
-              </Text>
+              </ThemedText>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
                 placeholder="Title"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.iconColor}
                 value={uploadTitle}
                 onChangeText={setUploadTitle}
               />
               {uploadType === 'link' ? (
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: theme.uiBackground, color: theme.text, borderColor: theme.iconColor }]}
                   placeholder="https://example.com"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={theme.iconColor}
                   value={uploadLink}
                   onChangeText={setUploadLink}
                   autoCapitalize="none"
                 />
               ) : (
                 <>
-                  <TouchableOpacity style={styles.filePickerButton} onPress={pickDocument}>
-                    <Text style={styles.filePickerText}>
+                  <ThemedButton style={[styles.filePickerButton, { borderColor: '#007AFF' }]} onPress={pickDocument}>
+                    <Ionicons name="folder-open-outline" size={20} color="#007AFF" />
+                    <ThemedText style={[styles.filePickerText, { color: '#007AFF' }]}>
                       {selectedFile ? selectedFile.name : 'SELECT PDF FILE'}
-                    </Text>
-                  </TouchableOpacity>
+                    </ThemedText>
+                  </ThemedButton>
                 </>
               )}
               {uploading ? (
-                <ActivityIndicator size="large" color="#E10600" style={{ marginTop: 20 }} />
+                <ActivityIndicator size="large" color={theme.iconColorFocused} style={{ marginTop: 20 }} />
               ) : (
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity style={styles.cancelButton} onPress={resetUploadModal}>
-                    <Text style={styles.cancelButtonText}>CANCEL</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.submitButton} onPress={handleUpload}>
-                    <Text style={styles.submitButtonText}>UPLOAD</Text>
-                  </TouchableOpacity>
+                  <ThemedButton style={[styles.cancelButton, { backgroundColor: theme.uiBackground }]} onPress={resetUploadModal}>
+                    <ThemedText style={styles.cancelButtonText}>CANCEL</ThemedText>
+                  </ThemedButton>
+                  <ThemedButton style={[styles.submitButton, { backgroundColor: '#007AFF' }]} onPress={handleUpload}>
+                    <ThemedText style={styles.submitButtonText}>UPLOAD</ThemedText>
+                  </ThemedButton>
                 </View>
               )}
             </>
@@ -412,27 +454,27 @@ export default function Notes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0E0E0E',
     padding: 16,
   },
   header: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginBottom: 8,
     letterSpacing: 1,
   },
   subHeader: {
     fontSize: 16,
-    color: '#999',
+    opacity: 0.6,
     marginBottom: 20,
     letterSpacing: 0.5,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 16,
+    gap: 8,
   },
   backButtonText: {
-    color: '#E10600',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -442,49 +484,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   card: {
-    backgroundColor: '#1A1A1A',
     width: '48%',
     padding: 20,
     marginBottom: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#E10600',
+    borderRadius: 12,
   },
   cardText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  activeTab: {
-    borderBottomWidth: 3,
-    borderBottomColor: '#E10600',
-  },
   tabText: {
-    color: '#666',
     fontSize: 14,
     fontWeight: '600',
   },
-  activeTabText: {
-    color: '#FFFFFF',
-  },
   uploadButton: {
-    backgroundColor: '#E10600',
+    flexDirection: 'row',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+    gap: 8,
   },
   uploadButtonText: {
     color: '#FFFFFF',
@@ -496,86 +528,88 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentCard: {
-    backgroundColor: '#1A1A1A',
     padding: 16,
     marginBottom: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#E10600',
+    borderRadius: 12,
+  },
+  contentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  contentTextContainer: {
+    flex: 1,
   },
   contentTitle: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   contentMeta: {
-    color: '#999',
     fontSize: 12,
+    opacity: 0.6,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
   emptyText: {
-    color: '#666',
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.5,
     textAlign: 'center',
-    marginTop: 50,
+  },
+  emptySubtext: {
+    marginTop: 4,
     fontSize: 14,
+    opacity: 0.4,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#1A1A1A',
     width: '85%',
     padding: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333',
+    borderRadius: 20,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: '#0E0E0E',
-    color: '#FFFFFF',
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
     fontSize: 14,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#666',
-    marginRight: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#999',
     fontSize: 14,
     fontWeight: '600',
   },
   submitButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 8,
-    backgroundColor: '#E10600',
-    marginLeft: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   submitButtonText: {
@@ -584,11 +618,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   typeButton: {
-    backgroundColor: '#E10600',
+    flexDirection: 'row',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   typeButtonText: {
     color: '#FFFFFF',
@@ -596,16 +632,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filePickerButton: {
-    backgroundColor: '#0E0E0E',
+    flexDirection: 'row',
     padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E10600',
+    borderRadius: 12,
+    borderWidth: 2,
     marginBottom: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   filePickerText: {
-    color: '#E10600',
     fontSize: 14,
     fontWeight: '600',
   },

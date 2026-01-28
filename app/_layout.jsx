@@ -18,6 +18,7 @@ const RootLayout = ({children}) => {
                 <Stack.Screen name = "(tabs)" options = {{headerShown : false}}/>
                 <Stack.Screen name = "profile" options = {{headerShown : false}}/>
                 <Stack.Screen name = "clubs" options = {{headerShown : false}}/>
+                <Stack.Screen name="chat" options={{ headerShown: false }} />
                 <Stack.Screen 
                     name = "createPost" 
                     options = {{

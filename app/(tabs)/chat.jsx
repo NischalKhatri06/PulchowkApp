@@ -24,7 +24,7 @@ export default function Chat() {
           onPress={() => setSelectedTab('direct')}
         >
           <ThemedText 
-            style={[
+            style={[ 
               styles.tabText,
               { color: selectedTab === 'direct' ? theme.iconColorFocused : theme.iconColor }
             ]}

@@ -194,14 +194,6 @@ const TabsLayout = () => {
                   <Ionicons name="menu" size={26} color={theme.iconColor} />
                 </ThemedButton>
 
-                <ThemedButton onPress={() => router.push('/notifications')} style={styles.iconButton}>
-                  <Ionicons name="notifications" size={26} color={theme.iconColor} />
-                  {unreadCount > 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{unreadCount}</Text>
-                    </View>
-                  )}
-                </ThemedButton>
               </View>
             </View>
           ),

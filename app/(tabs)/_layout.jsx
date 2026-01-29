@@ -3,7 +3,7 @@ import { View, StyleSheet, TextInput, FlatList, Pressable, Keyboard, useColorSch
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { db, auth } from '../../firebase/firebase';
-import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, query, where, onSnapshot } from 'firebase/firestore';
 import ThemedLogo from '../../components/ThemedLogo';
 import ThemedText from '../../components/ThemedText';
 import ThemedButton from '../../components/ThemedButton';
@@ -26,6 +26,25 @@ const TabsLayout = () => {
       loadSearchHistory();
     }
   }, [searchActive]);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', auth.currentUser.uid),
+      where('read', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.docs.length);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const loadSearchHistory = async () => {
     try {
@@ -173,6 +192,15 @@ const TabsLayout = () => {
 
                 <ThemedButton onPress={() => router.push('/profile')} style={styles.iconButton}>
                   <Ionicons name="menu" size={26} color={theme.iconColor} />
+                </ThemedButton>
+
+                <ThemedButton onPress={() => router.push('/notifications')} style={styles.iconButton}>
+                  <Ionicons name="notifications" size={26} color={theme.iconColor} />
+                  {unreadCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{unreadCount}</Text>
+                    </View>
+                  )}
                 </ThemedButton>
               </View>
             </View>
@@ -371,6 +399,22 @@ const TabsLayout = () => {
 export default TabsLayout;
 
 const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   headerContainer: { 
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -6,7 +6,7 @@ import { db, auth } from '../../firebase/firebase';
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import Spacer from '../../components/Spacer';
-import PostCard from '../../components/PostCard';
+import PostCard from '../../components/PostCard_WITH_SHARE';
 import CommentModal from '../../components/CommentModal';
 import CreatePostButton from '../../components/CreatePostButton';
 

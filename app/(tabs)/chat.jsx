@@ -5,7 +5,7 @@ import { Colors } from '../../constants/colors';
 import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import DirectMessages from '../../components/chat/DirectMessages';
-import ServersList from '../../components/chat/ServersList';
+import ServersList from '../../components/chat/GroupsList';
 
 export default function Chat() {
   const [selectedTab, setSelectedTab] = useState('direct'); // 'direct' or 'servers'

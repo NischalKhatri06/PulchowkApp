@@ -14,6 +14,8 @@ import Spacer from '../components/Spacer';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/colors';
 
+
+
 const CLOUDINARY_CLOUD_NAME = 'dyz9an12d';
 const CLOUDINARY_UPLOAD_PRESET = 'myPresent';
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
